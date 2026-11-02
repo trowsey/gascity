@@ -18,6 +18,7 @@ go_library(
     importpath = "github.com/gastownhall/gascity/internal/runtime/subprocess",
     visibility = ["//:__subpackages__"],
     deps = [
+        "//internal/execenv",
         "//internal/platform/localsocket",
         "//internal/processgroup",
         "//internal/runtime",
@@ -30,6 +31,7 @@ go_test(
     srcs = [
         "fence_test.go",
         "meta_privacy_test.go",
+        "process_env_projection_test.go",
         "refusal_windows_test.go",
         "seam_conformance_test.go",
         "seams_test.go",
@@ -47,6 +49,7 @@ go_test(
     ],
     embed = [":subprocess"],
     deps = [
+        "//internal/execenv",
         "//internal/runtime",
         "//internal/runtime/proctable",
         "//internal/runtime/runtimetest",

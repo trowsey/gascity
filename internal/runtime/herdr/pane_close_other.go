@@ -4,6 +4,7 @@ package herdr
 
 import "context"
 
-func (p *Provider) closeSessionPane(ctx context.Context, _ string, paneID string) error {
+// closeBoundPane closes paneID, the pane bound to the named session.
+func (p *Provider) closeBoundPane(ctx context.Context, _ string, paneID string) error {
 	return p.c.closePane(ctx, paneID)
 }

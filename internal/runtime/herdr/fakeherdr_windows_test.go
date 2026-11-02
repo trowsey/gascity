@@ -217,3 +217,8 @@ func rewriteGoFake(t *testing.T, p *Provider, old, replacement string) {
 	writeFakeHerdrSpec(t, p.c.bin, spec)
 	fakeHerdrs.Store(p.c.bin, spec)
 }
+
+// makeWaitHold is a no-op on Windows: the Go fake herdr reads no wait_hold.
+func makeWaitHold(t *testing.T, _ string) {
+	t.Helper()
+}

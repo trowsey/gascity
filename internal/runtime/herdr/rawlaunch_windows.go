@@ -78,11 +78,6 @@ func (p *Provider) awaitPaneShell(ctx context.Context, paneID string) (string, e
 	}
 }
 
-// paneGone reports whether err is herdr saying the pane no longer exists.
-func paneGone(err error) bool {
-	return strings.Contains(err.Error(), "not_found") || strings.Contains(err.Error(), "not found")
-}
-
 // paneShellName is the image name herdr reports for the pane's shell, or ""
 // when process-info does not list it.
 func paneShellName(shellPID int, fg []proc) string {

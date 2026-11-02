@@ -21,7 +21,10 @@ var (
 	rootIsCityInfrastructure = proctable.RootIsCityInfrastructure
 )
 
-func (p *Provider) closeSessionPane(ctx context.Context, name, paneID string) error {
+// closeBoundPane terminates the process tree of paneID, the pane bound to the
+// named session, once its shell is confirmed to be the bound one, then closes
+// the pane.
+func (p *Provider) closeBoundPane(ctx context.Context, name, paneID string) error {
 	var errs []error
 	if err := p.terminatePaneProcessTree(ctx, name, paneID); err != nil {
 		errs = append(errs, err)

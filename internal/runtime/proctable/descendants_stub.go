@@ -13,3 +13,9 @@ import "fmt"
 func snapshotProcesses() ([]ProcessRecord, error) {
 	return nil, fmt.Errorf("proctable: process table snapshots are unavailable: %w", ErrUnsupported)
 }
+
+// snapshotProcessTree is unavailable on platforms without process table
+// access, and says so for the reason snapshotProcesses gives.
+func snapshotProcessTree() ([]ProcessRecord, error) {
+	return nil, fmt.Errorf("proctable: process tree snapshots are unavailable: %w", ErrUnsupported)
+}

@@ -25,6 +25,28 @@ func snapshotProcesses() ([]ProcessRecord, error) {
 	return snapshotFromTable(table)
 }
 
+// snapshotProcessTree reads PID, PPID and creation time for every process from
+// one SystemProcessInformation snapshot and opens no process, so it never reads
+// an environment and a process wedged in its own memory cannot stall it. PGID
+// is 0 and SessionLeader false for the reasons snapshotProcesses gives: Windows
+// has no process group or session leadership a signal could be addressed to.
+func snapshotProcessTree() ([]ProcessRecord, error) {
+	rows, err := systemProcesses()
+	if err != nil {
+		return nil, err
+	}
+	table := indexProcessTable(rows)
+	records := make([]ProcessRecord, 0, len(rows))
+	for _, row := range rows {
+		records = append(records, ProcessRecord{
+			PID:       row.pid,
+			PPID:      reportedParentPID(table, row),
+			StartTime: row.startIdentity(),
+		})
+	}
+	return records, nil
+}
+
 // snapshotFromTable converts one table read into records. A row that was opened
 // but could not be read is still returned — its PID, PPID, creation time and
 // image come from the snapshot, not from inspection — but its session ID is

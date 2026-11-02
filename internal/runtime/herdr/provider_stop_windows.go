@@ -23,7 +23,7 @@ func (p *Provider) Stop(name string) error {
 		pid = boundPane
 	}
 	if pid != "" {
-		err = p.closeSessionPane(ctx, name, pid)
+		err = p.closeBoundPane(ctx, name, pid)
 	}
 	remaining, orphanErr := p.retrySessionOrphanCleanup(name)
 	if orphanErr != nil {

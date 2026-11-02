@@ -225,3 +225,90 @@ func TestMolDoWorkClosesOnlyItsVerifiedClaimedStep(t *testing.T) {
 		})
 	}
 }
+
+// molDoWorkDrainBlock is the drain step's bash block, as a session shell
+// runs it.
+func molDoWorkDrainBlock(t *testing.T) string {
+	t.Helper()
+	step := formulaStep(t, readFormula(t, "mol-do-work.toml"), "drain")
+	open := strings.Index(step, "```bash\n")
+	if open < 0 {
+		t.Fatal("drain step has no bash block")
+	}
+	body := step[open+len("```bash\n"):]
+	end := strings.Index(body, "```")
+	if end < 0 {
+		t.Fatal("drain bash block is unterminated")
+	}
+	return body[:end]
+}
+
+// Kills a drain that falls back on GC_TRIGGER_BEAD_ID: a shell that still
+// carries a foreign id there (an older gc exported the frozen demand stamp)
+// must never resolve, close or drain-ack through it. With no current claim
+// the drain fails loudly; with one, it closes the claim's own drain step
+// (gastownhall/gascity#5738).
+func TestMolDoWorkDrainNeverFallsBackToTriggerBeadID(t *testing.T) {
+	if _, err := exec.LookPath("jq"); err != nil {
+		t.Skip("jq not installed")
+	}
+	scriptPath := filepath.Join(t.TempDir(), "drain.sh")
+	if err := os.WriteFile(scriptPath, []byte(molDoWorkDrainBlock(t)), 0o644); err != nil {
+		t.Fatalf("write drain block: %v", err)
+	}
+	// Every read answers, so only the chain decides which bead is named.
+	const fakeGC = `case "$*" in
+"hook current --id-only") printf '%s\n' "$FAKE_HOOK_CURRENT" ;;
+"bd show ga-foreign --json") printf '%s\n' '[{"id":"ga-foreign","status":"in_progress","metadata":{"gc.root_bead_id":"ga-foreign-root"}}]' ;;
+"bd show ga-dowork --json") printf '%s\n' '[{"id":"ga-dowork","status":"closed","metadata":{"gc.step_ref":"mol-do-work.do-work","gc.root_bead_id":"ga-root"}}]' ;;
+"ready --json --limit=2 --include-ephemeral --metadata-field gc.root_bead_id=ga-root "*) printf '%s\n' '[{"id":"ga-drain"}]' ;;
+"ready --json --limit=2 --include-ephemeral --metadata-field gc.root_bead_id=ga-foreign-root "*) printf '%s\n' '[{"id":"ga-foreign-drain"}]' ;;
+"bd update "*|"runtime drain-ack") ;;
+*) echo "unexpected gc command: $*" >&2; exit 64 ;;
+esac
+`
+	skip := map[string]struct{}{"GC_BEAD_ID": {}, "GC_TRIGGER_BEAD_ID": {}, "FAKE_HOOK_CURRENT": {}}
+	for _, c := range []struct {
+		name, hookCurrent string
+		wantDrained       bool
+	}{
+		{"no current claim", "", false},
+		{"current claim names the do-work step", "ga-dowork", true},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			binDir, logPath := fakeGCBin(t, fakeGC)
+			if err := os.WriteFile(logPath, nil, 0o644); err != nil {
+				t.Fatalf("create gc log: %v", err)
+			}
+			out, runErr := runPackScript(t, scriptPath, binDir, skip, []string{"GC_TRIGGER_BEAD_ID=ga-foreign", "FAKE_HOOK_CURRENT=" + c.hookCurrent})
+			data, err := os.ReadFile(logPath)
+			if err != nil {
+				t.Fatalf("read gc log: %v", err)
+			}
+			logged := string(data)
+			if strings.Contains(logged, "ga-foreign") {
+				t.Fatalf("drain consulted the foreign trigger id:\n%s\noutput:\n%s", logged, out)
+			}
+			if !c.wantDrained {
+				if runErr == nil {
+					t.Fatalf("drain exited 0 with no current claim\noutput:\n%s\ngc calls:\n%s", out, logged)
+				}
+				if !strings.Contains(out, "no startup bead id to fall back on") {
+					t.Fatalf("diagnostic = %q, want the no-startup-bead failure", out)
+				}
+				if strings.Contains(logged, "gc bd update") || strings.Contains(logged, "gc runtime drain-ack") {
+					t.Fatalf("drain closed or acked with no current claim:\n%s", logged)
+				}
+				return
+			}
+			if runErr != nil {
+				t.Fatalf("drain failed: %v\noutput:\n%s\ngc calls:\n%s", runErr, out, logged)
+			}
+			for _, want := range []string{"gc bd update ga-drain --set-metadata gc.outcome=pass --status=closed", "gc runtime drain-ack"} {
+				if !strings.Contains(logged, want) {
+					t.Fatalf("gc calls missing %q:\n%s", want, logged)
+				}
+			}
+		})
+	}
+}

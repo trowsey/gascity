@@ -222,7 +222,8 @@ func InterruptCommand(cmd *exec.Cmd, knownPGID int, opts Options) error {
 
 // TerminateManagedCommand runs the provider-managed stop sequence for an owned
 // command: request a graceful stop, wait up to grace for the process to report
-// its own exit on done, then force the tree down and wait for confirmation.
+// its own exit on done and for the rest of its process group to exit, then
+// force the group down and wait for confirmation.
 //
 // done must be closed by whoever reaps cmd. Waiting on it rather than polling
 // liveness is what makes the returned nil mean "observed exited" instead of
@@ -245,7 +246,12 @@ func TerminateManagedCommand(cmd *exec.Cmd, knownPGID int, done <-chan struct{},
 	defer timer.Stop()
 	select {
 	case <-done:
-		return nil
+		// The leader exiting is not the group exiting: a member that handles
+		// or ignores SIGTERM outlives a leader that does not, and nothing
+		// would kill it afterwards. Wait out the grace for the whole group.
+		if pgid <= 0 || unsafeGroup(pgid, opts) || groupGoneBefore(pgid, timer.C, opts) {
+			return nil
+		}
 	case <-timer.C:
 	}
 
@@ -254,6 +260,23 @@ func TerminateManagedCommand(cmd *exec.Cmd, knownPGID int, done <-chan struct{},
 	}
 	<-done
 	return nil
+}
+
+// groupGoneBefore polls process group pgid until it has no members (true) or
+// expired fires (false). A member this process may not signal still counts.
+func groupGoneBefore(pgid int, expired <-chan time.Time, opts Options) bool {
+	ticker := time.NewTicker(opts.pollPeriod())
+	defer ticker.Stop()
+	for {
+		if !alive(pgid, opts) {
+			return true
+		}
+		select {
+		case <-expired:
+			return false
+		case <-ticker.C:
+		}
+	}
 }
 
 func waitForExit(pgid int, timeout time.Duration, opts Options) error {

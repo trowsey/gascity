@@ -97,17 +97,17 @@ func TestMolDoWorkDrainClaimsCurrentContinuation(t *testing.T) {
 		t.Fatal("drain must gate the current-claim branch on gc.step_ref; an unguarded claim restores the stale-identity bug")
 	}
 	// The startup-bead id is only needed by the ready-query fallback. Requiring
-	// it up front aborts drain on any seat that is not demand-spawned:
-	// GC_BEAD_ID exists only in the dispatch condition environment, never in a
-	// session shell, and GC_TRIGGER_BEAD_ID is pool-seat-only (see
-	// cmd/gc/cmd_hook_current.go). Same shape as ga-2q2r0.
+	// it up front aborts drain on every session seat: GC_BEAD_ID exists only in
+	// the dispatch condition environment, never in a session shell, and no
+	// session shell carries a trigger id (cmd/gc/cmd_hook_current.go). Same
+	// shape as ga-2q2r0.
 	startupAt := strings.Index(step, `STARTUP_BEAD_ID="${GC_BEAD_ID`)
 	if startupAt < 0 || startupAt < currentAt {
 		t.Fatal("drain must not require a startup bead id before consulting the current claim")
 	}
-	// The current claim carries gc.root_bead_id, and on a warm seat it is the
-	// ONLY source of it: GC_BEAD_ID never reaches a session shell and
-	// GC_TRIGGER_BEAD_ID is demand-spawn-only (cmd/gc/cmd_hook_current.go).
+	// The current claim carries gc.root_bead_id, and in a session shell it is
+	// the ONLY source of it: GC_BEAD_ID never reaches a session shell and no
+	// session shell carries a trigger id (cmd/gc/cmd_hook_current.go).
 	// Reading the root off the startup bead first strands every warm seat on
 	// the deferred path — the ga-2q2r0 failure, one layer in.
 	rootFromCurrent := strings.Index(step, `ROOT_BEAD_ID=$(printf '%s' "$CURRENT"`)

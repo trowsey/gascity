@@ -237,7 +237,7 @@ func TestHolderReapDoesNotRunOrphanRescan(t *testing.T) {
 		return []runtime.LiveRuntime{{SessionID: id, City: p.c.cityRoot, Epoch: 1, PID: 5000, StartIdentity: "fresh-start"}}, nil
 	}
 
-	_ = p.closeSessionPane(context.Background(), "mayor", "%9")
+	_ = p.closeBoundPane(context.Background(), "mayor", "%9")
 	if scans != 0 || len(*killed) != 0 {
 		t.Fatalf("holder reap scanned=%d killed=%+v; Start-time holder close must not orphan-scan", scans, *killed)
 	}

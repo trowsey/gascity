@@ -33,6 +33,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gastownhall/gascity/internal/execenv"
 	"github.com/gastownhall/gascity/internal/platform/localsocket"
 	"github.com/gastownhall/gascity/internal/processgroup"
 	"github.com/gastownhall/gascity/internal/runtime"
@@ -154,6 +155,29 @@ func newProvider(dir string) *Provider {
 // Startup hints (ReadyPromptPrefix, ProcessNames, etc.) are ignored —
 // all sessions are fire-and-forget.
 func (p *Provider) Start(_ context.Context, name string, cfg runtime.Config) error {
+	// Build environment: inherit parent env + apply overrides. An empty override
+	// spells withholding, matching the tmux adapter: remove the inherited entry
+	// instead of passing KEY=, so namespace isolation remains real to children.
+	// The parent env is read through execenv.Environ so a native beads store
+	// open projecting its scope's BEADS_* variables cannot leak into the session.
+	// It is read before p.mu: execenv.Environ waits out an in-flight open, and
+	// the provider's other calls must not wait with it.
+	env := execenv.Environ()
+	if len(cfg.Env) > 0 {
+		keys := make([]string, 0, len(cfg.Env))
+		for k := range cfg.Env {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			env = envWithoutKey(env, k)
+			if cfg.Env[k] == "" {
+				continue
+			}
+			env = append(env, k+"="+cfg.Env[k])
+		}
+	}
+
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	euid := os.Geteuid()
@@ -221,24 +245,6 @@ func (p *Provider) Start(_ context.Context, name string, cfg runtime.Config) err
 	cmd.Stdout = nullFile
 	cmd.Stderr = nullFile
 
-	// Build environment: inherit parent env + apply overrides. An empty override
-	// spells withholding, matching the tmux adapter: remove the inherited entry
-	// instead of passing KEY=, so namespace isolation remains real to children.
-	env := os.Environ()
-	if len(cfg.Env) > 0 {
-		keys := make([]string, 0, len(cfg.Env))
-		for k := range cfg.Env {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-		for _, k := range keys {
-			env = envWithoutKey(env, k)
-			if cfg.Env[k] == "" {
-				continue
-			}
-			env = append(env, k+"="+cfg.Env[k])
-		}
-	}
 	cmd.Env = env
 
 	// Validate immediately before process creation so hostile pre-creation
@@ -1092,11 +1098,16 @@ func (p *Provider) stopBySocketAt(name string, euid int) error {
 
 // --- In-memory process helpers ---
 
+// sessionStopGrace is how long a stopped session's process tree gets between
+// the cooperative stop request and the forced kill. A variable so tests can
+// shorten it.
+var sessionStopGrace = runtime.ManagedProcessStopGrace
+
 // terminateSessionConn requests a cooperative stop and, after the grace period,
 // force-reaps the owned process tree, then returns once reap has finished, so
 // a stopped session's sidecar is gone when Stop (or a socket "stop") returns.
 func terminateSessionConn(sc *sessionConn) error {
-	err := processgroup.TerminateManagedCommand(sc.cmd, sc.pgid, sc.done, runtime.ManagedProcessStopGrace, processgroup.Options{})
+	err := processgroup.TerminateManagedCommand(sc.cmd, sc.pgid, sc.done, sessionStopGrace, processgroup.Options{})
 	<-sc.reaped
 	return err
 }

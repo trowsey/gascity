@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -263,6 +262,27 @@ func TestGcBdSingleStoreForwardsEveryCommandUnchanged(t *testing.T) {
 	}
 }
 
+// TestGcBdSingleStoreForwardsFileOperandsUnchanged: a single-store city runs
+// no class judge, so a file operand bd reads is forwarded as the caller named
+// it, with no private copy to remove.
+func TestGcBdSingleStoreForwardsFileOperandsUnchanged(t *testing.T) {
+	scope := t.TempDir()
+	for name, body := range map[string]string{
+		"ops.txt": "create task 2 hello there\n",
+		"a.jsonl": `{"id":"demo-1","title":"w","issue_type":"task"}` + "\n",
+	} {
+		if err := os.WriteFile(filepath.Join(scope, name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, argv := range [][]string{{"batch", "--file", "ops.txt"}, {"import", "a.jsonl"}} {
+		g := bdClassFlipGuard(&config.City{}, scope, argv, bdClassGuardDeps{})
+		if g.refusal != "" || !slices.Equal(g.args, argv) || g.cleanup != nil {
+			t.Errorf("gc bd %q on a single-store city: refusal=%q args=%q cleanup set=%v", argv, g.refusal, g.args, g.cleanup != nil)
+		}
+	}
+}
+
 // TestGcBdSplitAllowlistIsDocumented keeps the "gc bd on split cities" docs
 // section in step with the allowlist.
 func TestGcBdSplitAllowlistIsDocumented(t *testing.T) {
@@ -307,63 +327,6 @@ func TestStoreClassHoldsIsNilOnASingleStoreCity(t *testing.T) {
 	}
 	if got := storeClassHolds(splitGuardTestCity(), "infra"); len(got) != 5 {
 		t.Errorf("split: binding holds %v, want the five infrastructure classes", got)
-	}
-}
-
-// TestGcBdImportSkipInfraWritesAWorkOnlyCopy checks what --skip-infra hands
-// bd, line by line, for a file and for stdin.
-func TestGcBdImportSkipInfraWritesAWorkOnlyCopy(t *testing.T) {
-	archive := `{"_type":"memory","key":"k","value":"v"}` + "\n" +
-		`{"id":"demo-1","title":"w","issue_type":"task","labels":["triage"]}` + "\n" +
-		`{"id":"demo-2","title":"m","issue_type":"message"}` + "\n" +
-		`{"id":"demo-3","title":"wisp","issue_type":"task","metadata":{"gc.kind":"wisp"}}` + "\n"
-	scope := t.TempDir()
-	if err := os.WriteFile(filepath.Join(scope, "a.jsonl"), []byte(archive), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	read := func(string) (beads.Bead, bdReadResult) { return beads.Bead{}, bdReadNotFound }
-
-	for _, argv := range [][]string{{"import", "a.jsonl", "--skip-infra"}, {"import", "--skip-infra", "-i", "a.jsonl"}, {"import", "--input=a.jsonl", "--skip-infra"}} {
-		g := bdClassFlipGuard(splitGuardTestCity(), scope, argv, splitTestDeps(nil, read))
-		if g.refusal != "" {
-			t.Fatalf("%v refused: %s", argv, g.refusal)
-		}
-		if slicesContainsString(g.args, "--skip-infra") || slicesContainsString(g.args, "a.jsonl") || slicesContainsString(g.args, "--input=a.jsonl") {
-			t.Fatalf("%v forwarded %v; want the work-only copy and no gc flag", argv, g.args)
-		}
-		var copyPath string
-		for _, a := range g.args {
-			if i := strings.Index(a, "gc-bd-import-work-"); i >= 0 {
-				copyPath = strings.TrimPrefix(a, "--input=")
-			}
-		}
-		data, err := os.ReadFile(copyPath)
-		if err != nil {
-			t.Fatalf("%v: reading the work-only copy %q: %v", argv, copyPath, err)
-		}
-		got := string(data)
-		if !strings.Contains(got, `"_type":"memory"`) || !strings.Contains(got, `"demo-1"`) || strings.Contains(got, `"demo-2"`) || strings.Contains(got, `"demo-3"`) {
-			t.Fatalf("%v: work-only copy = %q", argv, got)
-		}
-		g.cleanup()
-		if _, err := os.Stat(copyPath); !os.IsNotExist(err) {
-			t.Errorf("%v: the work-only copy outlived the command", argv)
-		}
-	}
-
-	g := bdClassFlipGuard(splitGuardTestCity(), scope, []string{"import", "-", "--skip-infra"}, splitTestDeps(bytes.NewBufferString(archive), read))
-	if g.refusal != "" || g.stdin == nil {
-		t.Fatalf("stdin import: refusal=%q stdin=%v", g.refusal, g.stdin)
-	}
-	var buf bytes.Buffer
-	if _, err := buf.ReadFrom(g.stdin); err != nil {
-		t.Fatal(err)
-	}
-	if got := buf.String(); !strings.Contains(got, `"demo-1"`) || strings.Contains(got, `"demo-2"`) || strings.Contains(got, `"demo-3"`) {
-		t.Fatalf("stdin import handed bd %q", got)
-	}
-	if strings.Join(g.args, " ") != "import -" {
-		t.Fatalf("stdin import forwarded %v, want [import -]", g.args)
 	}
 }
 
