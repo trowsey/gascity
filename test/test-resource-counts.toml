@@ -1591,6 +1591,7 @@ tagged = true
 path = "examples/gastown/gastown_test.go"
 resource = "subprocess"
 calls = 11
+tagged = true
 
 [[count]]
 path = "examples/gastown/maintenance_bd_integration_test.go"
@@ -2174,7 +2175,7 @@ calls = 2
 [[count]]
 path = "internal/gitcred/autherror_test.go"
 resource = "subprocess"
-calls = 2
+calls = 1
 
 [[count]]
 path = "internal/githubmonitor/client_test.go"
@@ -2821,11 +2822,13 @@ calls = 2
 path = "internal/worker/adapters/zcode/adapter_test.go"
 resource = "fixed_sleep"
 calls = 14
+tagged = true
 
 [[count]]
 path = "internal/worker/adapters/zcode/adapter_test.go"
 resource = "subprocess"
 calls = 2
+tagged = true
 
 [[count]]
 path = "internal/worker/fake/spec_test.go"
@@ -2965,11 +2968,13 @@ calls = 1
 path = "scripts/harness_reap_test.go"
 resource = "fixed_sleep"
 calls = 2
+tagged = true
 
 [[count]]
 path = "scripts/harness_reap_test.go"
 resource = "subprocess"
 calls = 4
+tagged = true
 
 [[count]]
 path = "scripts/makefile_cgo_test.go"
