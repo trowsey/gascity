@@ -190,6 +190,12 @@ resource = "slow_process_gate"
 calls = 1
 
 [[count]]
+path = "cmd/gc/claimed_work_refresh_windows_test.go"
+resource = "fixed_sleep"
+calls = 3
+tagged = true
+
+[[count]]
 path = "cmd/gc/cmd_analyze_reliability_test.go"
 resource = "cwd"
 calls = 2
