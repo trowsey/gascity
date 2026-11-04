@@ -2096,6 +2096,12 @@ calls = 1
 tagged = true
 
 [[count]]
+path = "internal/builtinpacks/filemode_windows_test.go"
+resource = "subprocess"
+calls = 1
+tagged = true
+
+[[count]]
 path = "internal/cliauth/client_test.go"
 resource = "http_test_server"
 calls = 13
@@ -2200,6 +2206,17 @@ resource = "subprocess"
 calls = 1
 
 [[count]]
+path = "internal/genshell/genshell_concurrency_windows_test.go"
+resource = "fixed_sleep"
+calls = 1
+tagged = true
+
+[[count]]
+path = "internal/genshell/genshell_test.go"
+resource = "subprocess"
+calls = 1
+
+[[count]]
 path = "internal/git/git_test.go"
 resource = "subprocess"
 calls = 2
@@ -2295,6 +2312,18 @@ calls = 1
 tagged = true
 
 [[count]]
+path = "internal/pidutil/pidutil_identity_windows_test.go"
+resource = "fixed_sleep"
+calls = 3
+tagged = true
+
+[[count]]
+path = "internal/pidutil/pidutil_identity_windows_test.go"
+resource = "subprocess"
+calls = 1
+tagged = true
+
+[[count]]
 path = "internal/pidutil/pidutil_test.go"
 resource = "fixed_sleep"
 calls = 2
@@ -2306,6 +2335,12 @@ calls = 2
 
 [[count]]
 path = "internal/pidutil/testcmd_unix_test.go"
+resource = "subprocess"
+calls = 2
+tagged = true
+
+[[count]]
+path = "internal/pidutil/testcmd_windows_test.go"
 resource = "subprocess"
 calls = 2
 tagged = true
