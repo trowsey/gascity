@@ -18,6 +18,39 @@ import (
 	"github.com/gastownhall/gascity/internal/coordclass"
 )
 
+// bdReadsFile returns the file bd reads for an admitted argv, resolved under
+// inv as bd resolves it: flag's last value without prefix, or import's
+// source.
+func bdReadsFile(t *testing.T, inv *bdflags.Inventory, scope string, argv []string, flag, prefix string) string {
+	t.Helper()
+	res, err := inv.Resolve(argv)
+	if err != nil {
+		t.Fatalf("forwarded argv %q does not resolve: %v", argv, err)
+	}
+	var name string
+	switch flag {
+	case "":
+		if v := res.Flags["--input"]; len(v) > 0 {
+			name = v[len(v)-1]
+		} else if len(res.Positionals) > 0 {
+			name = res.Positionals[0]
+		}
+	default:
+		v := res.Flags[flag]
+		if len(v) == 0 {
+			t.Fatalf("forwarded argv %q sets no %s", argv, flag)
+		}
+		var ok bool
+		if name, ok = strings.CutPrefix(v[len(v)-1], prefix); !ok {
+			t.Fatalf("forwarded %s=%q lacks the %q prefix", flag, v[len(v)-1], prefix)
+		}
+	}
+	if !filepath.IsAbs(name) {
+		name = filepath.Join(scope, name)
+	}
+	return name
+}
+
 // splitGuardTestCity is a whole-split city: every infrastructure class on one
 // binding, work on the work stores.
 func splitGuardTestCity() *config.City {

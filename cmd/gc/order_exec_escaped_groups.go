@@ -6,7 +6,6 @@ import (
 	"os/exec"
 	"sort"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/gastownhall/gascity/internal/processgroup"
@@ -43,6 +42,10 @@ var orderExecProcessSnapshot = proctable.SnapshotProcessTree
 //
 // The walk follows parent links, so it cannot reach a descendant that was
 // already orphaned (reparented away from the order's tree) before the cancel.
+//
+// On Windows a snapshot reports no process group (PGID 0), so no record is a
+// group leader and nothing is returned: the order's Job Object already owns
+// every descendant its cancel has to stop.
 func escapedOrderGroups(records []proctable.ProcessRecord, rootPID, orderPGID, ownPGID int, isCityInfrastructure func(pid int) bool) []int {
 	byPID := make(map[int]proctable.ProcessRecord, len(records))
 	children := make(map[int][]int, len(records))
@@ -92,7 +95,7 @@ func snapshotEscapedOrderGroups(cmd *exec.Cmd) ([]int, error) {
 	if err != nil {
 		return nil, fmt.Errorf("listing the canceled order's processes: %w", err)
 	}
-	return escapedOrderGroups(records, cmd.Process.Pid, cmd.Process.Pid, syscall.Getpgrp(), proctable.IsCityInfrastructureRoot), nil
+	return escapedOrderGroups(records, cmd.Process.Pid, cmd.Process.Pid, platformGetpgrp(), proctable.IsCityInfrastructureRoot), nil
 }
 
 // terminateProcessGroups terminates every group at once, each with grace

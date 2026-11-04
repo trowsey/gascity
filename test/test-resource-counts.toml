@@ -185,6 +185,30 @@ resource = "subprocess"
 calls = 2
 
 [[count]]
+path = "cmd/gc/city_store_quiesce_regression_windows_test.go"
+resource = "fixed_sleep"
+calls = 2
+tagged = true
+
+[[count]]
+path = "cmd/gc/city_store_quiesce_regression_windows_test.go"
+resource = "subprocess"
+calls = 1
+tagged = true
+
+[[count]]
+path = "cmd/gc/city_store_quiesce_windows_test.go"
+resource = "fixed_sleep"
+calls = 1
+tagged = true
+
+[[count]]
+path = "cmd/gc/city_store_quiesce_windows_test.go"
+resource = "subprocess"
+calls = 1
+tagged = true
+
+[[count]]
 path = "cmd/gc/cityinit_impl_test.go"
 resource = "slow_process_gate"
 calls = 1
@@ -1048,6 +1072,12 @@ calls = 1
 [[count]]
 path = "cmd/gc/native_dolt_rebind_integration_test.go"
 resource = "fixed_sleep"
+calls = 1
+tagged = true
+
+[[count]]
+path = "cmd/gc/native_store_direct_windows_test.go"
+resource = "subprocess"
 calls = 1
 tagged = true
 
