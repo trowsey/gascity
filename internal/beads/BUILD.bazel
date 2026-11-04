@@ -27,6 +27,7 @@ go_library(
         "//internal/fsys",
         "//internal/pathutil",
         "//internal/pidutil",
+        "//internal/platform/filelock",
         "//internal/rollout/gate",
         "//internal/telemetry",
         "@com_github_steveyegge_beads//:beads",
@@ -41,9 +42,6 @@ go_library(
         ],
         "@rules_go//go/platform:linux": [
             "@org_golang_x_sys//unix",
-        ],
-        "@rules_go//go/platform:windows": [
-            "//internal/platform/filelock",
         ],
         "//conditions:default": [],
     }),
@@ -352,6 +350,7 @@ go_test(
         "//internal/events",
         "//internal/execenv",
         "//internal/fsys",
+        "//internal/platform/filelock",
         "//internal/rollout/gate",
         "//internal/runproj",
         "//internal/testenv",
