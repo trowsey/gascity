@@ -32,39 +32,6 @@ func judgedFilesDeps(inventory string) bdClassGuardDeps {
 	return deps
 }
 
-// bdReadsFile returns the file bd reads for an admitted argv, resolved under
-// inv as bd resolves it: flag's last value without prefix, or import's
-// source.
-func bdReadsFile(t *testing.T, inv *bdflags.Inventory, scope string, argv []string, flag, prefix string) string {
-	t.Helper()
-	res, err := inv.Resolve(argv)
-	if err != nil {
-		t.Fatalf("forwarded argv %q does not resolve: %v", argv, err)
-	}
-	var name string
-	switch flag {
-	case "":
-		if v := res.Flags["--input"]; len(v) > 0 {
-			name = v[len(v)-1]
-		} else if len(res.Positionals) > 0 {
-			name = res.Positionals[0]
-		}
-	default:
-		v := res.Flags[flag]
-		if len(v) == 0 {
-			t.Fatalf("forwarded argv %q sets no %s", argv, flag)
-		}
-		var ok bool
-		if name, ok = strings.CutPrefix(v[len(v)-1], prefix); !ok {
-			t.Fatalf("forwarded %s=%q lacks the %q prefix", flag, v[len(v)-1], prefix)
-		}
-	}
-	if !filepath.IsAbs(name) {
-		name = filepath.Join(scope, name)
-	}
-	return name
-}
-
 // TestGcBdSplitHandsBdTheBytesItJudged: a split judge that reads a file the
 // caller names hands bd a private copy of exactly the bytes it judged, in
 // every spelling of the operand, under both pinned bd builds. The copy keeps
