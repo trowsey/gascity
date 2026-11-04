@@ -125,6 +125,9 @@ func (p *Provider) runCapped(parent context.Context, dur time.Duration, limit in
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, p.script, args...)
+	if err := execenv.CheckBatchFileArgs(cmd); err != nil {
+		return "", fmt.Errorf("exec provider %s: %w", args[0], err)
+	}
 	cmd.Env = env
 	// Run the adapter in its own process group with TERM-then-kill
 	// cancellation (execgrace.Apply) so cooperative cancellation reaches a
@@ -329,6 +332,9 @@ func isStartCollision(errMsg string) bool {
 // runWithTTY executes the script with the terminal inherited (for Attach).
 func (p *Provider) runWithTTY(args ...string) error {
 	cmd := exec.Command(p.script, args...)
+	if err := execenv.CheckBatchFileArgs(cmd); err != nil {
+		return fmt.Errorf("exec provider %s: %w", args[0], err)
+	}
 	cmd.Env = p.cityEnv()
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
@@ -583,6 +589,10 @@ func (p *Provider) startStartupWatch(
 	env := p.cityEnv()
 	watchCtx, cancel := context.WithCancel(ctx)
 	cmd := exec.CommandContext(watchCtx, p.script, "watch-startup", name)
+	if err := execenv.CheckBatchFileArgs(cmd); err != nil {
+		cancel()
+		return nil, nil, false, fmt.Errorf("exec provider watch-startup: %w", err)
+	}
 	cmd.Env = env
 	// Startup watchers are short-lived probes; tear them down quickly once the
 	// dialog helper is finished so Start cannot stall behind a sleeping wrapper.
@@ -1136,6 +1146,9 @@ func (p *Provider) Exec(ctx context.Context, name string, argv []string) ([]byte
 	defer cancel()
 
 	cmd := exec.CommandContext(cmdCtx, p.script, "exec", name)
+	if err := execenv.CheckBatchFileArgs(cmd); err != nil {
+		return nil, -1, fmt.Errorf("exec provider exec: %w", err)
+	}
 	cmd.Env = env
 	cmd.WaitDelay = 2 * time.Second
 	var stdout, stderr bytes.Buffer
