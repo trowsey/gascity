@@ -224,6 +224,8 @@ becoming more useful as models improve — it becomes LESS useful instead.
 - `cobra` for CLI, `github.com/BurntSushi/toml` for config
 - Atomic file writes: temp file → `os.Rename`
 - No panics in library code — return errors
+- Windows `gc init`/`gc start` require symlinks;
+  fail with Developer Mode/elevation guidance, never copy.
 - Error messages include context: `fmt.Errorf("adding rig %q: %w", name, err)`
 - Don't swallow errors: no silently filled-in defaults, masked decode
   failures, or ignored timeouts.

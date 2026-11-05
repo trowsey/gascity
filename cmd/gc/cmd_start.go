@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"path"
 	"path/filepath"
+	goruntime "runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -458,6 +459,10 @@ Use "gc supervisor run" for foreground operation.`,
 			if jsonOut && (foregroundMode || dryRunMode) {
 				fmt.Fprintln(stderr, "gc start: --json is only supported for supervisor-managed start") //nolint:errcheck // best-effort stderr
 				return errExit
+			}
+			if err := symlinkPreflight(goruntime.GOOS, os.Symlink); err != nil {
+				fmt.Fprintf(stderr, "gc start: %v\n", err) //nolint:errcheck // best-effort stderr
+				return err
 			}
 			if doStartJSON(args, foregroundMode, jsonOut, stdout, stderr) != 0 {
 				return errExit

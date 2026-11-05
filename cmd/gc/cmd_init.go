@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	goruntime "runtime"
 	"strconv"
 	"strings"
 
@@ -373,6 +374,10 @@ committed workspace — e.g. from a bootstrap.sh shipped in the repo).`,
     --dolt-database bd_prj_x --dolt-project-id prj_x --no-start /city`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(runCmd *cobra.Command, args []string) error {
+			if err := symlinkPreflight(goruntime.GOOS, os.Symlink); err != nil {
+				fmt.Fprintf(stderr, "gc init: %v\n", err) //nolint:errcheck // best-effort stderr
+				return err
+			}
 			out := stdout
 			if jsonOut {
 				out = io.Discard
